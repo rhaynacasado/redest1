@@ -30,7 +30,7 @@ int main() {
     // Definir endereço do servidor
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(8080);
-    serv_addr.sin_addr.s_addr = inet_addr("172.18.192.1");  // Usando inet_addr para o IP
+    serv_addr.sin_addr.s_addr = inet_addr("172.26.0.1");  // Usando inet_addr para o IP
 
     // Conectar ao servidor
     if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
