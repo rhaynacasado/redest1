@@ -11,7 +11,7 @@ int main() {
     SOCKET sock;
     struct sockaddr_in serv_addr;
     char buffer[1024] = {0};
-    const char *message = "Hello from client";
+    const char message[256] = "Hello from client";
 
     // Inicializar Winsock
     printf("Inicializando Winsock...\n");
@@ -39,16 +39,24 @@ int main() {
     }
     printf("Conectado ao servidor.\n");
 
-    // Enviar mensagem ao servidor
-    send(sock, message, strlen(message), 0);
-    printf("Mensagem enviada ao servidor.\n");
+    while(1) {     
+        fgets(message, sizeof(message), stdin);
+        printf("%s", message);
 
-    // Receber resposta do servidor
-    recv(sock, buffer, 1024, 0);
-    printf("Mensagem recebida do servidor: %s\n", buffer);
+        // Enviar mensagem ao servidor
+        send(sock, message, strlen(message), 0);
+        printf("Mensagem enviada ao servidor.\n");
+
+        if(strcmp(message, "fim\n") == 0)
+            break;
+        
+        // Receber resposta do servidor
+        recv(sock, buffer, 1024, 0);
+        printf("Mensagem recebida do servidor: %s\n", buffer);
+    }
 
     // Fechar conexão
-    closesocket(sock);
+    closesocket(sock);+
     WSACleanup();
     return 0;
 }

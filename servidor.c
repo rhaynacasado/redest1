@@ -59,11 +59,20 @@ int main() {
     }
     printf("Conexão aceita.\n");
 
-    // Receber e enviar mensagens
-    recv(new_socket, buffer, 1024, 0);
-    printf("Mensagem recebida: %s\n", buffer);
-    send(new_socket, message, strlen(message), 0);
-    printf("Mensagem enviada ao cliente.\n");
+    int fim = 1;
+    while(fim){
+        memset(buffer, 0, sizeof(buffer));
+        
+        // Receber e enviar mensagens
+        recv(new_socket, buffer, 1024, 0);
+        printf("Mensagem recebida: %s\n", buffer);
+        send(new_socket, message, strlen(message), 0);
+        printf("Mensagem enviada ao cliente.\n");
+
+        if(strcmp(buffer, "fim\n") == 0)
+            fim = 0;
+    }
+
 
     // Fechar conexão
     closesocket(new_socket);
