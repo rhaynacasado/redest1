@@ -33,8 +33,10 @@ int main() {
     serv_addr.sin_addr.s_addr = inet_addr("172.26.0.1");  // Usando inet_addr para o IP
 
     // Conectar ao servidor
-    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == SOCKET_ERROR) {
         printf("Conexão falhou. Código: %d\n", WSAGetLastError());
+        closesocket(sock); // Fechar o socket se a conexão falhar
+        WSACleanup();
         return 1;
     }
     printf("Conectado ao servidor.\n");
