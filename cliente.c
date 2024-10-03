@@ -28,13 +28,9 @@ int main() {
     printf("Socket criado.\n");
 
     // Definir endereço do servidor
-    printf("1\n");
     serv_addr.sin_family = AF_INET;
-    printf("2\n");
     serv_addr.sin_port = htons(8080);
-    printf("3\n");
     serv_addr.sin_addr.s_addr = inet_addr("172.18.192.1");  // Usando inet_addr para o IP
-    printf("4\n");
 
     // Conectar ao servidor
     if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
