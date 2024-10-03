@@ -15,9 +15,9 @@ teste:
 	./bin/cliente_teste
 
 cliente-carol:
-	gcc ./servidor.c -o ./bin/servidor -lws2_32
-	./bin/servidor 172.26.167.178
+	gcc ./cliente.c -o ./bin/cliente -lws2_32
+	./bin/cliente 172.26.167.178
 
 cliente-rhay:
-	gcc ./servidor.c -o ./bin/servidor -lws2_32
-	./bin/servidor 172.26.192.137
+	gcc ./cliente.c -o ./bin/cliente -lws2_32
+	./bin/cliente 172.26.192.137
