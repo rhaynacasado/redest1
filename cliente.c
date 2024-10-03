@@ -6,12 +6,18 @@
 
 #pragma comment(lib, "ws2_32.lib")  // Linkar a biblioteca Winsock
 
-int main() {
+int main(int argc, char *argv[]) {
     WSADATA wsa;
     SOCKET sock;
     struct sockaddr_in serv_addr;
     char buffer[1024] = {0};
-    const char message[256] = "Hello from client";
+    const char message[1024] = "Hello from client";
+
+    // Verificar se o endereço IP foi fornecido
+    if (argc != 2) {
+        printf("Uso correto: %s <IP do servidor>\n", argv[0]);
+        return 1;
+    }
 
     // Inicializar Winsock
     printf("Inicializando Winsock...\n");
@@ -30,7 +36,7 @@ int main() {
     // Definir endereço do servidor
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(8080);
-    serv_addr.sin_addr.s_addr = inet_addr("172.26.0.1");  // Usando inet_addr para o IP
+    serv_addr.sin_addr.s_addr = inet_addr(argv[1]);  // Recebe o IP do terminal
 
     // Conectar ao servidor
     if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == SOCKET_ERROR) {
@@ -39,22 +45,21 @@ int main() {
         WSACleanup();
         return 1;
     }
-    printf("Conectado ao servidor.\n");
+    printf("Conectado ao servidor no IP %s\n", argv[1]);
 
-    while(1) {     
+    while(1) {    
+        printf("Cliente: ");
         fgets(message, sizeof(message), stdin);
-        printf("%s", message);
 
         // Enviar mensagem ao servidor
         send(sock, message, strlen(message), 0);
-        printf("Mensagem enviada ao servidor.\n");
 
         if(strcmp(message, "fim\n") == 0)
             break;
         
         // Receber resposta do servidor
         recv(sock, buffer, 1024, 0);
-        printf("Mensagem recebida do servidor: %s\n", buffer);
+        printf("\nServidor: %s\n", buffer);
     }
 
     // Fechar conexão

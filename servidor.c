@@ -11,7 +11,7 @@ int main() {
     struct sockaddr_in address;
     int addrlen = sizeof(address);
     char buffer[1024] = {0};
-    const char *message = "Hello from server";
+    const char message[1024] = "Hello from server";
 
     // Inicializar Winsock
     printf("Inicializando Winsock...\n");
@@ -65,12 +65,14 @@ int main() {
         
         // Receber e enviar mensagens
         recv(new_socket, buffer, 1024, 0);
-        printf("Mensagem recebida: %s\n", buffer);
-        send(new_socket, message, strlen(message), 0);
-        printf("Mensagem enviada ao cliente.\n");
+        printf("Cliente: %s\n", buffer);
 
         if(strcmp(buffer, "fim\n") == 0)
             fim = 0;
+
+        printf("Servidor: ");
+        fgets(message, sizeof(message), stdin);
+        send(new_socket, message, strlen(message), 0);
     }
 
 

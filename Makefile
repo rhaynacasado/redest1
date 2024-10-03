@@ -1,6 +1,6 @@
 cliente:
 	gcc ./cliente.c -o ./bin/cliente -lws2_32
-	./bin/cliente 
+	./bin/cliente 127.0.0.1
 
 servidor:
 	gcc ./servidor.c -o ./bin/servidor -lws2_32
@@ -13,3 +13,11 @@ all:
 teste:
 	gcc ./cliente_teste.c -o ./bin/cliente_teste -lws2_32
 	./bin/cliente_teste
+
+cliente-carol:
+	gcc ./servidor.c -o ./bin/servidor -lws2_32
+	./bin/servidor 172.26.167.178
+
+cliente-rhay:
+	gcc ./servidor.c -o ./bin/servidor -lws2_32
+	./bin/servidor 172.26.192.137
