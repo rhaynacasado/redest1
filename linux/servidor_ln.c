@@ -1,15 +1,73 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+
+int sock = 0;  // socket será compartilhado entre as threads
+int flag_finalizacao = 1;   // flag para indicar que uma das threads finalizou (programa cliente deve ser encerrado)
+
+// Função para enviar mensagens ao cliente
+void* enviar_mensagens(void* arg) {
+    char message[1024];
+
+    while (1) {
+        // Verifica se o programa deve ser finalizado
+        if(flag_finalizacao == 0)
+            break;
+
+        // Digitar a mensagem que será enviada ao cliente
+        printf("Servidor: ");
+        fgets(message, sizeof(message), stdin);
+
+        // Enviar mensagem ao cliente
+        send(sock, message, strlen(message), 0);
+
+        // Se a mensagem enviada for "fim" o programa é encerrado
+        if (strcmp(message, "fim\n") == 0) {
+            printf("Conexão finalizada pelo servidor.\n");
+            flag_finalizacao = 0;
+            break;
+        }
+    }
+
+    pthread_exit(0);
+}
+
+// Função para receber mensagens do servidor
+void* receber_mensagens(void* arg) {
+    char buffer[1024] = {0};    // inicializa o buffer
+
+    while (1) {
+        // Verifica se o programa deve ser finalizado
+        if(flag_finalizacao == 0)
+            break;
+
+        memset(buffer, 0, sizeof(buffer));  // limpa o buffer
+
+        // Receber resposta do servidor
+        if(read(sock, buffer, 1024) < 0){
+            perror("Erro ao receber mensagem");
+            break;
+        }
+        printf("\nServidor: %s\n", buffer);
+
+        if(strcmp(buffer, "fim\n") == 0) {
+            flag_finalizacao = 0;
+            break;
+        }
+    }
+
+    pthread_exit(0);
+}
 
 int main() {
     int server_fd, new_socket;
     struct sockaddr_in address;
     int addrlen = sizeof(address);
     char buffer[1024] = {0};
-    const char *message = "Hello from server";
+    char message[1024] = "Hello from server";
 
     // Criar o socket (IPv4, TCP)
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
@@ -35,21 +93,38 @@ int main() {
         close(server_fd);
         exit(EXIT_FAILURE);
     }
-
+    printf("\nEsperando conexão do cliente...\n");
+   
     // Aceitar conexão do cliente
     if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
         perror("accept failed");
         close(server_fd);
         exit(EXIT_FAILURE);
     }
+    printf("Conectado ao cliente!\n");
 
-    // Receber mensagem do cliente
-    read(new_socket, buffer, 1024);
-    printf("Mensagem recebida: %s\n", buffer);
+    // // Receber mensagem do cliente
+    // read(new_socket, buffer, 1024);
+    // printf("Mensagem recebida: %s\n", buffer);
 
-    // Enviar mensagem ao cliente
-    send(new_socket, message, strlen(message), 0);
-    printf("Mensagem enviada\n");
+    // // Enviar mensagem ao cliente
+    // send(new_socket, message, strlen(message), 0);
+    // printf("Mensagem enviada\n");
+
+    while(1){
+        memset(buffer, 0, sizeof(buffer));
+        
+        // Receber e enviar mensagens
+        read(new_socket, buffer, 1024);
+        printf("\nCliente: %s\n", buffer);
+
+        if(strcmp(buffer, "fim\n") == 0)
+            break;
+
+        printf("Servidor: ");
+        fgets(message, sizeof(message), stdin);
+        send(new_socket, message, strlen(message), 0);
+    }
 
     // Fechar conexão
     close(new_socket);
