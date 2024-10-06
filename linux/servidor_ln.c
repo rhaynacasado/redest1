@@ -5,112 +5,304 @@
 #include <ncurses.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <ctype.h>
 
-// Variáveis globais
-int sock = 0;  // Socket que será compartilhado entre as threads
-int flag_finalizacao = 1;   // Flag para indicar que o programa deve ser encerrado
+#define MAX_CLIENTES 10       // Número máximo de clientes suportados
+#define BUFFER_SIZE 1024      // Tamanho do buffer para mensagens
+
+int flag_finalizacao = 0;     // Flag para indicar que o servidor deve ser encerrado
+
+// Estrutura para armazenar informações do cliente
+typedef struct {
+    int sock;                 // Socket do cliente
+    char nome[50];            // Nome do cliente
+} Cliente;
+
+Cliente clientes[MAX_CLIENTES];           // Array de clientes conectados
+int num_clientes = 0;                     // Número atual de clientes conectados
+
+// Mutexes para sincronização
+pthread_mutex_t clientes_mutex = PTHREAD_MUTEX_INITIALIZER; // Mutex para o array de clientes
+pthread_mutex_t win_mutex = PTHREAD_MUTEX_INITIALIZER;      // Mutex para a janela do ncurses
+pthread_mutex_t win_input_mutex = PTHREAD_MUTEX_INITIALIZER; // Mutex para a janela de entrada
+pthread_mutex_t win_output_mutex = PTHREAD_MUTEX_INITIALIZER; // Mutex para a janela de saída
 
 // Janelas do ncurses
 WINDOW *win_output, *win_input;
 
-// Mutexes para sincronizar o acesso às janelas entre as threads
-pthread_mutex_t win_input_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t win_output_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-// Função para enviar mensagens ao cliente
-void* enviar_mensagens(void* arg) {
-    char message[1024]; // Buffer para armazenar a mensagem a ser enviada
-
-    while (1) {
-        if(flag_finalizacao == 0)
-            break;
-
-        // Limpar a janela de entrada e exibir o prompt com cor
-        pthread_mutex_lock(&win_input_mutex);
-        wclear(win_input); // Limpa a janela de entrada
-        wattron(win_input, COLOR_PAIR(2)); // Ativa o par de cores 2 (Servidor)
-        mvwprintw(win_input, 0, 0, "Servidor: "); // Exibe o prompt na janela de entrada
-        wattroff(win_input, COLOR_PAIR(2)); // Desativa o par de cores 2
-        wrefresh(win_input); // Atualiza a janela de entrada
-        pthread_mutex_unlock(&win_input_mutex);
-
-        // Ler a entrada do usuário (bloqueante)
-        pthread_mutex_lock(&win_input_mutex);
-        wgetnstr(win_input, message, sizeof(message) - 1); // Lê a mensagem digitada pelo usuário
-        pthread_mutex_unlock(&win_input_mutex);
-
-        if (flag_finalizacao == 0)
-            break;
-
-        // Enviar mensagem ao cliente
-        send(sock, message, strlen(message), 0);
-
-        // Verifica se a mensagem é "fim" para encerrar a conexão
-        if (strcmp(message, "fim") == 0) {
-            pthread_mutex_lock(&win_output_mutex);
-            wprintw(win_output, "Conexão finalizada pelo servidor.\n"); // Informa que a conexão foi encerrada
-            wrefresh(win_output);
-            pthread_mutex_unlock(&win_output_mutex);
-            flag_finalizacao = 0; // Define a flag para encerrar o programa
-            break;
+// Função para transmitir mensagens a todos os clientes
+void broadcast_message(const char *message, int sender_sock) {
+    pthread_mutex_lock(&clientes_mutex);
+    for (int i = 0; i < num_clientes; ++i) {
+        if (clientes[i].sock != sender_sock) { // Não envia para o remetente
+            if (send(clientes[i].sock, message, strlen(message), 0) < 0) {
+                perror("Erro ao enviar mensagem");
+            }
         }
-
-        // Exibir mensagem na janela de saída com cor
-        pthread_mutex_lock(&win_output_mutex);
-        wattron(win_output, COLOR_PAIR(2)); // Ativa o par de cores 2 (Servidor)
-        wprintw(win_output, "Servidor: "); // Exibe "Servidor:" em cor na janela de saída
-        wattroff(win_output, COLOR_PAIR(2)); // Desativa o par de cores 2
-        wprintw(win_output, "%s\n", message); // Exibe a mensagem enviada
-        wrefresh(win_output); // Atualiza a janela de saída
-        pthread_mutex_unlock(&win_output_mutex);
     }
-
-    pthread_exit(0); // Encerra a thread
+    pthread_mutex_unlock(&clientes_mutex);
 }
 
-// Função para receber mensagens do cliente
-void* receber_mensagens(void* arg) {
-    char buffer[1024]; // Buffer para armazenar a mensagem recebida
+// Função que lida com cada cliente conectado
+void *handle_client(void *arg) {
+    int client_sock = *((int *)arg);
+    free(arg);
+    char buffer[BUFFER_SIZE];
+    int nbytes;
+    char client_name[50];
 
+    // Receber o nome do cliente
+    memset(client_name, 0, sizeof(client_name));
+    int name_len = 0;
     while (1) {
-        if(flag_finalizacao == 0)
-            break;
-
-        memset(buffer, 0, sizeof(buffer)); // Limpa o buffer
-
-        // Recebe a mensagem do cliente
-        if(read(sock, buffer, sizeof(buffer)-1) <= 0){
-            perror("Erro ao receber mensagem"); // Exibe erro se a leitura falhar
-            flag_finalizacao = 0; // Define a flag para encerrar o programa
-            break;
+        nbytes = recv(client_sock, client_name + name_len, 1, 0);
+        if (nbytes <= 0) {
+            goto disconnect;
         }
-
-        // Atualizar a janela de saída com cor
-        pthread_mutex_lock(&win_output_mutex);
-        wattron(win_output, COLOR_PAIR(1)); // Ativa o par de cores 1 (Cliente)
-        wprintw(win_output, "Cliente: "); // Exibe "Cliente:" em cor na janela de saída
-        wattroff(win_output, COLOR_PAIR(1)); // Desativa o par de cores 1
-        wprintw(win_output, "%s\n", buffer); // Exibe a mensagem recebida
-        wrefresh(win_output); // Atualiza a janela de saída
-        pthread_mutex_unlock(&win_output_mutex);
-
-        // Verifica se a mensagem recebida é "fim" para encerrar a conexão
-        if(strcmp(buffer, "fim\n") == 0 || strcmp(buffer, "fim") == 0) {
-            wprintw(win_output, "Cliente finalizou a conexão.\n"); // Informa que o cliente encerrou a conexão
-            flag_finalizacao = 0; // Define a flag para encerrar o programa
+        if (client_name[name_len] == '\n') {
+            client_name[name_len] = '\0'; // Remove o '\n'
             break;
+        } else {
+            name_len++;
+            if (name_len >= sizeof(client_name) - 1) {
+                // Nome muito longo
+                client_name[name_len] = '\0';
+                break;
+            }
         }
     }
 
-    pthread_exit(0); // Encerra a thread
+    // Armazena o nome do cliente
+    pthread_mutex_lock(&clientes_mutex);
+    for (int i = 0; i < num_clientes; ++i) {
+        if (clientes[i].sock == client_sock) {
+            strncpy(clientes[i].nome, client_name, sizeof(clientes[i].nome) - 1);
+            clientes[i].nome[sizeof(clientes[i].nome) - 1] = '\0';
+            break;
+        }
+    }
+    pthread_mutex_unlock(&clientes_mutex);
+
+    // Exibe mensagem de novo cliente
+    pthread_mutex_lock(&win_output_mutex);
+    wattron(win_output, COLOR_PAIR(2)); // Servidor
+    wprintw(win_output, "Novo cliente conectado: %s\n", client_name);
+    wattroff(win_output, COLOR_PAIR(2));
+    wrefresh(win_output);
+    pthread_mutex_unlock(&win_output_mutex);
+
+    // Notifica outros clientes sobre o novo cliente
+    char join_message[BUFFER_SIZE];
+    snprintf(join_message, sizeof(join_message), "Servidor: %s entrou no chat.\n", client_name);
+    broadcast_message(join_message, -1);
+
+    while (1) {
+        // Ler dados do cliente até encontrar um '\n' (delimitador de mensagem)
+        int bytes_received = 0;
+        while (1) {
+            nbytes = recv(client_sock, buffer + bytes_received, 1, 0);
+            if (nbytes <= 0) {
+                // O cliente desconectou ou ocorreu um erro
+                goto disconnect;
+            }
+            if (buffer[bytes_received] == '\n') {
+                bytes_received++;
+                break;
+            } else {
+                bytes_received++;
+                if (bytes_received >= BUFFER_SIZE - 1) {
+                    // Evitar estouro de buffer
+                    break;
+                }
+            }
+        }
+        buffer[bytes_received] = '\0'; // Termina a string recebida
+
+        // Verifica se o cliente enviou "fim" para encerrar a conexão
+        if (strcmp(buffer, "fim\n") == 0 || strcmp(buffer, "fim") == 0) {
+            goto disconnect;
+        }
+
+        // Exibe a mensagem recebida na janela de saída com cor
+        pthread_mutex_lock(&win_output_mutex);
+        wattron(win_output, COLOR_PAIR(1)); // Ativa o par de cores 1 (Cliente)
+        wprintw(win_output, "%s: %s", client_name, buffer);
+        wattroff(win_output, COLOR_PAIR(1)); // Desativa o par de cores 1
+        wrefresh(win_output);
+        pthread_mutex_unlock(&win_output_mutex);
+
+        // Prepara a mensagem para transmitir aos outros clientes
+        char message_to_send[BUFFER_SIZE + 100]; // Ajuste do tamanho do buffer
+        snprintf(message_to_send, sizeof(message_to_send), "%s: %s", client_name, buffer);
+
+        // Transmite a mensagem para os outros clientes
+        broadcast_message(message_to_send, client_sock);
+    }
+
+disconnect:
+    // Cliente desconectado, remove-o da lista
+    close(client_sock);
+    pthread_mutex_lock(&clientes_mutex);
+    char client_left_message[BUFFER_SIZE];
+    memset(client_left_message, 0, sizeof(client_left_message));
+    for (int i = 0; i < num_clientes; ++i) {
+        if (clientes[i].sock == client_sock) {
+            // Notifica outros clientes sobre a saída
+            snprintf(client_left_message, sizeof(client_left_message), "Servidor: %s saiu do chat.\n", clientes[i].nome);
+            // Remove o cliente do array
+            for (int j = i; j < num_clientes - 1; ++j) {
+                clientes[j] = clientes[j + 1];
+            }
+            num_clientes--;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&clientes_mutex);
+
+    // Exibe mensagem de desconexão
+    pthread_mutex_lock(&win_output_mutex);
+    wprintw(win_output, "%s desconectado.\n", client_name);
+    wrefresh(win_output);
+    pthread_mutex_unlock(&win_output_mutex);
+
+    // Envia a mensagem de saída para os outros clientes
+    broadcast_message(client_left_message, -1);
+
+    pthread_exit(NULL);
+}
+
+// Função para aceitar novos clientes
+void *accept_clients(void *arg) {
+    int server_fd = *((int *)arg);
+    int new_sock;
+    struct sockaddr_in client_addr;
+    socklen_t client_len = sizeof(client_addr);
+
+    while (!flag_finalizacao) {
+        // Aceitar conexão do cliente
+        new_sock = accept(server_fd, (struct sockaddr *)&client_addr, &client_len);
+        if (new_sock < 0) {
+            if (flag_finalizacao) break;
+            perror("Erro no accept");
+            continue;
+        }
+
+        // Adiciona o novo cliente à lista
+        pthread_mutex_lock(&clientes_mutex);
+        if (num_clientes < MAX_CLIENTES) {
+            clientes[num_clientes].sock = new_sock;
+            strcpy(clientes[num_clientes].nome, ""); // Nome será recebido posteriormente
+            num_clientes++;
+
+            // Cria uma thread para lidar com o novo cliente
+            pthread_t tid;
+            int *pclient = malloc(sizeof(int));
+            if (pclient == NULL) {
+                perror("Erro ao alocar memória");
+                close(new_sock);
+                pthread_mutex_unlock(&clientes_mutex);
+                continue;
+            }
+            *pclient = new_sock;
+            if (pthread_create(&tid, NULL, handle_client, pclient) != 0) {
+                perror("Erro ao criar thread para o cliente");
+                free(pclient);
+                close(new_sock);
+                num_clientes--;
+                pthread_mutex_unlock(&clientes_mutex);
+                continue;
+            }
+            pthread_detach(tid); // Opcional: libera recursos da thread ao terminar
+        } else {
+            // Limite de clientes atingido
+            close(new_sock);
+            pthread_mutex_lock(&win_output_mutex);
+            wprintw(win_output, "Cliente recusado: limite de conexões atingido.\n");
+            wrefresh(win_output);
+            pthread_mutex_unlock(&win_output_mutex);
+        }
+        pthread_mutex_unlock(&clientes_mutex);
+    }
+    pthread_exit(NULL);
+}
+
+// Função para enviar mensagens do servidor para todos os clientes
+void *enviar_mensagens(void *arg) {
+    char message[BUFFER_SIZE];
+
+    // Configurar a janela de entrada para modo não bloqueante
+    nodelay(win_input, TRUE);
+    keypad(win_input, TRUE);
+    noecho();  // Desabilita o eco para controlar a entrada manualmente
+
+    char input_buffer[BUFFER_SIZE];
+    memset(input_buffer, 0, sizeof(input_buffer));
+    int pos = 0;
+    int ch;
+
+    while (!flag_finalizacao) {
+        // Ler entrada do usuário
+        pthread_mutex_lock(&win_input_mutex);
+
+        wmove(win_input, 0, 0);
+        wclear(win_input);
+        wattron(win_input, COLOR_PAIR(2));
+        mvwprintw(win_input, 0, 0, "Servidor: %s", input_buffer);
+        wattroff(win_input, COLOR_PAIR(2));
+        wrefresh(win_input);
+
+        pthread_mutex_unlock(&win_input_mutex);
+
+        ch = wgetch(win_input);
+        if (ch != ERR) {
+            if (ch == '\n') {
+                if (strlen(input_buffer) > 0) {
+                    // Adicionar '\n' ao final da mensagem se não tiver
+                    if (input_buffer[strlen(input_buffer) - 1] != '\n') {
+                        strcat(input_buffer, "\n");
+                    }
+
+                    if (strcmp(input_buffer, "fim\n") == 0 || strcmp(input_buffer, "fim") == 0) {
+                        flag_finalizacao = 1; // Define a flag para encerrar o servidor
+                        break;
+                    }
+
+                    // Exibir mensagem na janela de saída com cor
+                    pthread_mutex_lock(&win_output_mutex);
+                    wattron(win_output, COLOR_PAIR(2)); // Ativa o par de cores 2 (Servidor)
+                    wprintw(win_output, "Servidor: %s", input_buffer);
+                    wattroff(win_output, COLOR_PAIR(2)); // Desativa o par de cores 2
+                    wrefresh(win_output);
+                    pthread_mutex_unlock(&win_output_mutex);
+
+                    // Transmitir a mensagem para todos os clientes
+                    char message_to_send[BUFFER_SIZE + 10];
+                    snprintf(message_to_send, sizeof(message_to_send), "Servidor: %s", input_buffer);
+                    broadcast_message(message_to_send, -1); // -1 indica que é mensagem do servidor
+
+                    memset(input_buffer, 0, sizeof(input_buffer));
+                    pos = 0;
+                }
+            } else if (ch == KEY_BACKSPACE || ch == 127 || ch == 8) {
+                if (pos > 0) {
+                    input_buffer[--pos] = '\0';
+                }
+            } else if (pos < BUFFER_SIZE - 2 && isprint(ch)) {
+                input_buffer[pos++] = ch;
+                input_buffer[pos] = '\0';
+            }
+        } else {
+            usleep(10000); // Espera um pouco para evitar alto uso de CPU
+        }
+    }
+    pthread_exit(NULL);
 }
 
 int main() {
-    int server_fd, new_socket;
-    struct sockaddr_in address;
-    int addrlen = sizeof(address);
+    int server_fd;
+    struct sockaddr_in server_addr;
 
-    // Criar o socket (IPv4, TCP)
+    // Criar o socket do servidor
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         perror("Erro na criação do socket");
         exit(EXIT_FAILURE);
@@ -124,107 +316,95 @@ int main() {
     }
 
     // Definir endereço e porta
-    address.sin_family = AF_INET; // Família de endereços IPv4
-    address.sin_addr.s_addr = INADDR_ANY; // Aceita conexões em qualquer endereço IP
-    address.sin_port = htons(8080); // Porta 8080 (convertida para ordem de bytes de rede)
+    server_addr.sin_family = AF_INET; // IPv4
+    server_addr.sin_addr.s_addr = INADDR_ANY; // Qualquer endereço
+    server_addr.sin_port = htons(8080); // Porta 8080
 
-    // Vincular o socket ao IP/Porta
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-        perror("Erro no bind"); // Exibe erro se o bind falhar
-        close(server_fd); // Fecha o socket do servidor
+    // Vincular o socket ao endereço e porta
+    if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        perror("Erro no bind");
         exit(EXIT_FAILURE);
     }
 
     // Escutar por conexões
-    if (listen(server_fd, 3) < 0) {
-        perror("Erro no listen"); // Exibe erro se o listen falhar
-        close(server_fd); // Fecha o socket do servidor
+    if (listen(server_fd, MAX_CLIENTES) < 0) {
+        perror("Erro no listen");
         exit(EXIT_FAILURE);
     }
-
-    printf("\nEsperando conexão do cliente...\n");
-
-    // Aceitar conexão do cliente
-    if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
-        perror("Erro no accept"); // Exibe erro se o accept falhar
-        close(server_fd); // Fecha o socket do servidor
-        exit(EXIT_FAILURE);
-    }
-
-    printf("Conectado ao cliente!\n");
-
-    sock = new_socket; // Define o socket global para uso nas threads
 
     // Inicializar o ncurses
-    initscr(); // Inicializa a tela padrão
-    cbreak(); // Desabilita o buffer de linha, o input é recebido caracter por caracter
-    keypad(stdscr, TRUE); // Habilita o uso de teclas especiais (setas, F1-F12, etc.)
+    initscr();
+    cbreak();
+    keypad(stdscr, TRUE);
 
     // Verificar se o terminal suporta cores
-    if (has_colors() == FALSE) {
-        endwin(); // Encerra o modo ncurses
+    if (!has_colors()) {
+        endwin();
         printf("Seu terminal não suporta cores.\n");
-        close(sock);
-        close(server_fd);
         exit(1);
     }
-    start_color(); // Inicia o modo de cores
+    start_color();
 
     // Definir pares de cores
-    init_pair(1, COLOR_GREEN, COLOR_BLACK); // Par de cores 1: texto verde em fundo preto (Cliente)
-    init_pair(2, COLOR_BLUE, COLOR_BLACK);  // Par de cores 2: texto azul em fundo preto (Servidor)
+    init_pair(1, COLOR_GREEN, COLOR_BLACK); // Cliente
+    init_pair(2, COLOR_BLUE, COLOR_BLACK);  // Servidor
 
-    // Criar janelas para saída e entrada
-    int height_output = LINES - 3; // Altura da janela de saída (deixa 3 linhas para a janela de entrada)
-    int width = COLS; // Largura da janela (tamanho total do terminal)
-    win_output = newwin(height_output, width, 0, 0); // Janela de saída
-    win_input = newwin(3, width, height_output, 0); // Janela de entrada
-    scrollok(win_output, TRUE); // Permite scroll na janela de saída
+    // Criar janelas
+    int height_output = LINES - 3;
+    int width = COLS;
+    win_output = newwin(height_output, width, 0, 0);
+    win_input = newwin(3, width, height_output, 0);
+    scrollok(win_output, TRUE);
 
-    // Configurar a janela de entrada
-    nodelay(win_input, FALSE); // Modo bloqueante (espera a entrada do usuário)
-    keypad(win_input, TRUE); // Habilita teclas especiais na janela de entrada
-    echo();  // Habilita o eco dos caracteres digitados na janela de entrada
-
-    // Exibir mensagem de conexão estabelecida na janela de saída
+    // Exibir mensagem inicial
     pthread_mutex_lock(&win_output_mutex);
-    wattron(win_output, COLOR_PAIR(2)); // Ativa o par de cores 2 (Servidor)
-    wprintw(win_output, "Conexão estabelecida com o cliente.\n"); // Mensagem inicial
-    wattroff(win_output, COLOR_PAIR(2)); // Desativa o par de cores 2
-    wrefresh(win_output); // Atualiza a janela de saída
+    wattron(win_output, COLOR_PAIR(2));
+    wprintw(win_output, "Servidor iniciado. Aguardando conexões...\n");
+    wattroff(win_output, COLOR_PAIR(2));
+    wrefresh(win_output);
     pthread_mutex_unlock(&win_output_mutex);
 
-    // Criando as threads para enviar e receber mensagens
-    pthread_t threads[2];
-    if(pthread_create(&threads[0], NULL, receber_mensagens, NULL) != 0){
-        printf("Erro ao criar thread que recebe mensagens\n");
-        endwin(); // Encerra o modo ncurses
-        close(sock);
-        close(server_fd);
-        exit(1);
-    }
-    if(pthread_create(&threads[1], NULL, enviar_mensagens, NULL) != 0){
-        printf("Erro ao criar thread que envia mensagens\n");
-        endwin(); // Encerra o modo ncurses
-        close(sock);
-        close(server_fd);
+    // Thread para aceitar novos clientes
+    pthread_t accept_thread;
+    if (pthread_create(&accept_thread, NULL, accept_clients, &server_fd) != 0) {
+        perror("Erro ao criar thread de accept");
+        endwin();
         exit(1);
     }
 
-    // Aguardar que as threads terminem
-    pthread_join(threads[0], NULL); // Aguarda a thread de receber mensagens
-    pthread_join(threads[1], NULL); // Aguarda a thread de enviar mensagens
+    // Thread para enviar mensagens do servidor
+    pthread_t send_thread;
+    if (pthread_create(&send_thread, NULL, enviar_mensagens, NULL) != 0) {
+        perror("Erro ao criar thread de envio");
+        endwin();
+        exit(1);
+    }
 
-    // Limpar e finalizar ncurses
-    pthread_mutex_destroy(&win_input_mutex); // Destroi o mutex da janela de entrada
-    pthread_mutex_destroy(&win_output_mutex); // Destroi o mutex da janela de saída
-    delwin(win_output); // Deleta a janela de saída
-    delwin(win_input); // Deleta a janela de entrada
-    endwin(); // Finaliza o modo ncurses
+    // Aguardar o término da thread de envio (quando o servidor digita "fim")
+    pthread_join(send_thread, NULL);
 
-    // Fechar conexão
-    close(sock); // Fecha o socket de comunicação com o cliente
-    close(server_fd); // Fecha o socket do servidor
+    // Encerrar o servidor
+    flag_finalizacao = 1;
+
+    // Fechar todos os sockets de clientes
+    pthread_mutex_lock(&clientes_mutex);
+    for (int i = 0; i < num_clientes; ++i) {
+        close(clientes[i].sock);
+    }
+    num_clientes = 0;
+    pthread_mutex_unlock(&clientes_mutex);
+
+    // Fechar o socket do servidor
+    close(server_fd);
+
+    // Limpar e finalizar o ncurses
+    pthread_mutex_destroy(&clientes_mutex);
+    pthread_mutex_destroy(&win_mutex);
+    pthread_mutex_destroy(&win_input_mutex);
+    pthread_mutex_destroy(&win_output_mutex);
+    delwin(win_output);
+    delwin(win_input);
+    endwin();
 
     return 0;
 }
