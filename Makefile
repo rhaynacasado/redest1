@@ -20,9 +20,11 @@ app_cliente:
 	gcc apps/cliente.c ./obj/*.o -I ./include -o bin/cliente -lncurses -lpthread
 
 run_servidor_jogo:
+	gcc apps/servidor_jogo.c ./obj/*.o -I ./include -o bin/servidor_jogo -lncurses -lpthread
 	./bin/servidor_jogo
 
 run_servidor_chat:
+	gcc apps/servidor_chat.c ./obj/*.o -I ./include -o bin/servidor_chat -lncurses -lpthread
 	./bin/servidor_chat
 
 run_cliente:

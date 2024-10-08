@@ -6,7 +6,7 @@ extern pthread_mutex_t win_input_mutex, win_output_mutex;
 extern int flag_finalizacao_servidor, num_clientes;
 extern Cliente clientes[MAX_CLIENTES];
 extern pthread_mutex_t clientes_mutex, win_mutex;
-extern int cliente_dica, votos[MAX_CLIENTES], votos_recebidos, dica_enviada, jogo_iniciado;
+extern int cliente_dica, nota, votos[MAX_CLIENTES], votos_recebidos, dica_enviada, jogo_iniciado;
 extern pthread_mutex_t votos_mutex, cond_votos, jogo_mutex, dica_mutex;
 
 // Função que lida com cada cliente conectado
@@ -103,6 +103,7 @@ void *handle_client(void *arg) {
                 jogo_iniciado = 0;
                 votos_recebidos = 0;
                 cliente_dica = -1;
+                nota = -1;
                 pthread_mutex_lock(&votos_mutex);
                 memset(votos, 0, sizeof(votos));
                 pthread_mutex_unlock(&votos_mutex);
@@ -118,7 +119,7 @@ void *handle_client(void *arg) {
         }
 
         // Verifica se o cliente enviou o comando "iniciar jogo"
-        int nota, resposta;
+        int resposta;
         pthread_mutex_lock(&dica_mutex);
         pthread_mutex_lock(&jogo_mutex);
         if (strcmp(buffer, "iniciar jogo\n") == 0 || strcmp(buffer, "iniciar jogo") == 0) {

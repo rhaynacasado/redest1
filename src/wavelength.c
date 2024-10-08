@@ -5,6 +5,7 @@ extern Cliente clientes[MAX_CLIENTES];
 extern pthread_mutex_t clientes_mutex, win_mutex;
 
 int cliente_dica = -1;                   // Variável global para armazenar o número do cliente que dará a dica
+int nota = -1;
 
 // Variável para armazenar o total de votos
 int votos[MAX_CLIENTES];
@@ -144,7 +145,7 @@ int escolher_cliente_dica() {
     memset(votos, 0, sizeof(votos)); // Limpa vetor de votos
     pthread_mutex_unlock(&votos_mutex);
 
-    int nota = rand()%11;
+    nota = rand()%11;
     char nota_msg[BUFFER_SIZE];
     snprintf(nota_msg, sizeof(nota_msg), "Servidor: %s a nota da rodada é %d. Dê uma dica correspondente!\n", clientes[cliente_dica].nome, nota);
     send(clientes[cliente_dica].sock, nota_msg, strlen(nota_msg), 0);

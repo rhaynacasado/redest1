@@ -14,6 +14,9 @@ Dessa forma optou-se por desenvolver um jogo multiplayer inspirado no jogo Wavel
 ## Como rodar
 
 ```bash
+    # Install ncurses
+    $ sudo apt-get install libncurses5-dev libncursesw5-dev
+    
     # Clone the project
     $ git clone https://github.com/rhaynacasado/redest1
     $ cd redest1
