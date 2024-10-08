@@ -204,6 +204,7 @@ void coletar_votos(int client_sock, int voto, int resposta) {
         // Resetar para nova rodada
         votos_recebidos = 0;
         cliente_dica = -1;
+        dica_enviada = 0;
         // jogo_iniciado = 0;
         pthread_mutex_lock(&votos_mutex);
         memset(votos, 0, sizeof(votos));
