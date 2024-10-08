@@ -1,31 +1,37 @@
-cliente:
-	gcc ./cliente.c -o ./bin/cliente -lws2_32
-	./bin/cliente 127.0.0.1
+compile_jogo:
+	gcc -o bin/servidor_jogo src/servidor_jogo.c -lncurses -lpthread
+	gcc -o bin/cliente_jogo src/cliente_jogo.c -lncurses -lpthread
 
-servidor:
-	gcc ./servidor.c -o ./bin/servidor -lws2_32
-	./bin/servidor
+servidor_jogo:
+	gcc -o bin/servidor_jogo src/servidor_jogo.c -lncurses -lpthread
+	./bin/servidor_jogo
 
-all:
-	gcc ./cliente.c -o ./bin/cliente -lws2_32
-	gcc ./servidor.c -o ./bin/servidor -lws2_32
+cliente_jogo:
+	gcc -o bin/cliente_jogo src/cliente_jogo.c -lncurses -lpthread
+	./bin/cliente_jogo
 
-teste:
-	gcc ./cliente_teste.c -o ./bin/cliente_teste -lws2_32
-	./bin/cliente_teste
 
-cliente-carol:
-	gcc ./cliente.c -o ./bin/cliente -lws2_32
-	./bin/cliente 172.26.167.178
+compile_chat:
+	gcc -o bin/servidor_chat src/servidor_chat.c -lncurses -lpthread
+	gcc -o bin/cliente_chat src/cliente_chat.c -lncurses -lpthread
 
-cliente-rhay:
-	gcc ./cliente.c -o ./bin/cliente -lws2_32
-	./bin/cliente 172.26.192.137
+servidor_chat:
+	gcc -o bin/servidor_chat src/servidor_chat.c -lncurses -lpthread
+	./bin/servidor_chat
 
-servidor_ln:
-	gcc -o bin/servidor_ln linux/servidor_ln.c -lncurses -lpthread
-	./bin/servidor_ln
+cliente_chat:
+	gcc -o bin/cliente_chat src/cliente_chat.c -lncurses -lpthread
+	./bin/cliente_chat
 
-cliente_ln:
-	gcc -o bin/cliente_ln linux/cliente_ln.c -lncurses -lpthread
-	./bin/cliente_ln
+
+compile_win:
+	gcc ./win/cliente_win.c -o ./bin/cliente_win -lws2_32
+	gcc ./win/servidor_win.c -o ./bin/servidor_win -lws2_32
+
+servidor_win:
+	gcc ./win/servidor_win.c -o ./bin/servidor_win -lws2_32
+	./bin/servidor_win
+
+cliente_win:
+	gcc ./win/cliente_win.c -o ./bin/cliente_win -lws2_32
+	./bin/cliente_win 127.0.0.1
