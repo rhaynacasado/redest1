@@ -68,7 +68,7 @@ void *handle_client(void *arg) {
     snprintf(rules_msg, sizeof(rules_msg), "Durante cada rodada do jogo, um jogador (mestre) será escolhido\npara fornecer a dica para os demais.\n\nAssim, todos receberão uma escala abstrata e o mestre receberá também uma nota de 0 a 10 dentro dessa escala.\nO mestre, então, fornecerá uma dica sobre esta nota e o objetivo dos jogadores é adivinhar qual a nota da rodada!\n\nVocês podem conversar aqui pelo chat para discutirem suas respostas, mas todos os jogadores precisam forncer um\nnúmero de 0 a 10 como resposta da rodada. A resposta final será computada como a média de todas as respostas.\nAqui vão alguns comandos importantes.\n\n");
     send(client_sock, rules_msg, strlen(rules_msg), 0);  // Envia mensagem de regras ao cliente
     char command_msg[BUFFER_SIZE];
-    snprintf(command_msg, sizeof(command_msg), "'iniciar rodada' -> iniciar uma rodada\n'resposta - X' -> fornece uma resposta\n'fim' -> sai do servidor\n\nBom Jogo!\n");
+    snprintf(command_msg, sizeof(command_msg), "'iniciar jogo' -> iniciar o jogo\n'resposta - X' -> fornece uma resposta\n'fechar jogo' -> encerra o jogo\n'fim' -> sai do servidor\n\nBom Jogo!\n\n");
     send(client_sock, command_msg, strlen(command_msg), 0);  // Envia mensagem de comando ao cliente
 
     while (1) {
@@ -98,13 +98,18 @@ void *handle_client(void *arg) {
             goto disconnect;
         }
 
-        // if (strcmp(buffer, "fechar jogo\n") == 0 || strcmp(buffer, "fechar jogo") == 0) {
-        //     jogo_iniciado = 0;
-        //     cliente_dica
-        //     char inicio_msg[BUFFER_SIZE];
-        //     snprintf(inicio_msg, sizeof(inicio_msg), "Jogo iniciado!\n");
-        //     broadcast_message(inicio_msg, -1);  // Envia mensagem de inicio do jogo aos clientes
-        // }
+        if (strcmp(buffer, "fechar jogo\n") == 0 || strcmp(buffer, "fechar jogo") == 0) {
+            jogo_iniciado = 0;
+            votos_recebidos = 0;
+            cliente_dica = -1;
+            pthread_mutex_lock(&votos_mutex);
+            memset(votos, 0, sizeof(votos));
+            pthread_mutex_unlock(&votos_mutex);
+
+            char fim_msg[BUFFER_SIZE];
+            snprintf(fim_msg, sizeof(fim_msg), "Servidor: Jogo encerrado!\n");
+            broadcast_message(fim_msg, -1);  // Envia mensagem de inicio do jogo aos clientes
+        }
 
         // Verifica se o cliente enviou o comando "iniciar jogo"
         int nota, resposta;
@@ -114,18 +119,18 @@ void *handle_client(void *arg) {
             if (num_clientes >= 2 && jogo_iniciado == 0) {
                 jogo_iniciado = 1; // Marca que o jogo foi iniciado
                 char inicio_msg[BUFFER_SIZE];
-                snprintf(inicio_msg, sizeof(inicio_msg), "Jogo iniciado!\n");
+                snprintf(inicio_msg, sizeof(inicio_msg), "Servidor: Jogo iniciado!\n");
                 broadcast_message(inicio_msg, -1);  // Envia mensagem de inicio do jogo aos clientes
                 nota = escolher_cliente_dica();  // Escolhe o cliente para dar a dica
             } else if (jogo_iniciado == 0){
                 // Caso não tenha clientes suficientes
                 char erro_msg[BUFFER_SIZE];
-                snprintf(erro_msg, sizeof(erro_msg), "Não é possível iniciar o jogo. Necessário pelo menos 2 jogadores.\n");
+                snprintf(erro_msg, sizeof(erro_msg), "Servidor: Não é possível iniciar o jogo. Necessário pelo menos 2 jogadores.\n");
                 send(client_sock, erro_msg, strlen(erro_msg), 0);  // Envia mensagem de erro ao cliente
             } else {
                 // Caso o jogo já tenha começado
                 char erro_msg[BUFFER_SIZE];
-                snprintf(erro_msg, sizeof(erro_msg), "O jogo já está em andamento.\n");
+                snprintf(erro_msg, sizeof(erro_msg), "Servidor: O jogo já está em andamento.\n");
                 send(client_sock, erro_msg, strlen(erro_msg), 0);  // Envia mensagem de erro ao cliente
             }
         } else if (client_sock == clientes[cliente_dica].sock && dica_enviada == 0) { // Se for o cliente da dica, compartilhe a dica

@@ -163,7 +163,7 @@ int validar_resposta(int client_sock, const char *msg) {
         if (sscanf(msg + strlen(prefixo), "%d", &numero) == 1) {
             if(numero < 0 || numero > 10){
                 char erro_msg[BUFFER_SIZE];
-                snprintf(erro_msg, sizeof(erro_msg), "Resposta inválida. Responda com um número entre 0 e 10.\n");
+                snprintf(erro_msg, sizeof(erro_msg), "Servidor: Resposta inválida. Responda com um número entre 0 e 10.\n");
                 send(client_sock, erro_msg, strlen(erro_msg), 0);  // Envia mensagem de erro ao cliente
                 return -2;
             }
@@ -182,7 +182,7 @@ void coletar_votos(int client_sock, int voto, int resposta) {
 
     if (votos_recebidos == num_clientes - 1) { // Se todos votaram, processa os resultados
         char resultado[BUFFER_SIZE];
-        snprintf(resultado, sizeof(resultado), "Todos votaram!\n");
+        snprintf(resultado, sizeof(resultado), "Servidor: Todos votaram!\n");
         broadcast_message(resultado, -1);
 
         int resultado_final = 0;
@@ -195,18 +195,18 @@ void coletar_votos(int client_sock, int voto, int resposta) {
 
         char msg_final[BUFFER_SIZE];
         if(resultado_final == resposta)
-            snprintf(msg_final, sizeof(msg_final), "Vocês acertaram! A resposta era %d.\n", resultado_final);
+            snprintf(msg_final, sizeof(msg_final), "Servidor: Vocês acertaram! A resposta era %d.\n", resultado_final);
         else
-            snprintf(msg_final, sizeof(msg_final), "Não foi dessa vez! Vocês marcaram %d, mas era %d.\n", resultado_final, resposta);
+            snprintf(msg_final, sizeof(msg_final), "Servidor: Não foi dessa vez! Vocês marcaram %d, mas era %d.\n", resultado_final, resposta);
         broadcast_message(msg_final, -1);
         
         // Resetar para nova rodada
         votos_recebidos = 0;
         cliente_dica = -1;
-        jogo_iniciado = 0;
+        // jogo_iniciado = 0;
         pthread_mutex_lock(&votos_mutex);
         memset(votos, 0, sizeof(votos));
         pthread_mutex_unlock(&votos_mutex);
-        // escolher_cliente_dica(); // Inicia nova rodada
+        escolher_cliente_dica(); // Inicia nova rodada
     }
 }
