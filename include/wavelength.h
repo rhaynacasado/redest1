@@ -1,5 +1,5 @@
-#ifndef WAVELENGHT_H
-#define WAVELENGHT_H
+#ifndef WAVELENGTH_H
+#define WAVELENGTH_H
 
 #include "servidor.h"
 

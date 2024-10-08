@@ -1,4 +1,4 @@
-#include "wavelenght.h"
+#include "wavelength.h"
 
 extern int flag_finalizacao_servidor, num_clientes;
 extern Cliente clientes[MAX_CLIENTES];

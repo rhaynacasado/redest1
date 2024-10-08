@@ -1,8 +1,8 @@
 compile_socketlib:
 	gcc -c ./src/socket.c -I ./include -o ./obj/socket.o
 
-compile_wavelenghtlib:
-	gcc -c ./src/wavelenght.c -I ./include -o ./obj/wavelenght.o
+compile_wavelengthlib:
+	gcc -c ./src/wavelength.c -I ./include -o ./obj/wavelength.o
 
 compile_servidorlib:
 	gcc -c ./src/servidor.c -I ./include -o ./obj/servidor.o
@@ -33,7 +33,7 @@ run_cliente:
 compile_servidor:
 	gcc -c ./src/socket.c -I ./include -o ./obj/socket.o
 	gcc -c ./src/servidor.c -I ./include -o ./obj/servidor.o
-	gcc -c ./src/wavelenght.c -I ./include -o ./obj/wavelenght.o
+	gcc -c ./src/wavelength.c -I ./include -o ./obj/wavelength.o
 
 compile_cliente:
 	gcc -c ./src/socket.c -I ./include -o ./obj/socket.o

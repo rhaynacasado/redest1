@@ -1,4 +1,4 @@
-#include "wavelenght.h"
+#include "wavelength.h"
 #include <time.h>
 
 extern WINDOW *win_output, *win_input;
@@ -62,7 +62,7 @@ void *handle_client(void *arg) {
     snprintf(join_message, sizeof(join_message), "Servidor: %s entrou no chat.\n", client_name);
     broadcast_message(join_message, -1);
     char welcome_msg[BUFFER_SIZE];
-    snprintf(welcome_msg, sizeof(welcome_msg), "Bem-vindo ao servidor do Wavelenght %s! Aqui estão algumas instruções básicas sobre o funcionamento do jogo.\n\nWavelength é um jogo em que um jogador dá uma dica para que sua equipe adivinhe a posição de um alvo em uma escala\nabstrata (como 'quente' a 'frio'). A equipe discute e tenta posicionar um ponteiro o mais próximo possível do alvo\ncom base na dica, tentando alinhar seus pensamentos.", client_name);
+    snprintf(welcome_msg, sizeof(welcome_msg), "Bem-vindo ao servidor do Wavelength %s! Aqui estão algumas instruções básicas sobre o funcionamento do jogo.\n\nWavelength é um jogo em que um jogador dá uma dica para que sua equipe adivinhe a posição de um alvo em uma escala\nabstrata (como 'quente' a 'frio'). A equipe discute e tenta posicionar um ponteiro o mais próximo possível do alvo\ncom base na dica, tentando alinhar seus pensamentos.", client_name);
     send(client_sock, welcome_msg, strlen(welcome_msg), 0);  // Envia mensagem de boas-vindas ao cliente
     char rules_msg[BUFFER_SIZE];
     snprintf(rules_msg, sizeof(rules_msg), "Durante cada rodada do jogo, um jogador (mestre) será escolhido\npara fornecer a dica para os demais.\n\nAssim, todos receberão uma escala abstrata e o mestre receberá também uma nota de 0 a 10 dentro dessa escala.\nO mestre, então, fornecerá uma dica sobre esta nota e o objetivo dos jogadores é adivinhar qual a nota da rodada!\n\nVocês podem conversar aqui pelo chat para discutirem suas respostas, mas todos os jogadores precisam forncer um\nnúmero de 0 a 10 como resposta da rodada. A resposta final será computada como a média de todas as respostas.\nAqui vão alguns comandos importantes.\n\n");
@@ -99,16 +99,22 @@ void *handle_client(void *arg) {
         }
 
         if (strcmp(buffer, "fechar jogo\n") == 0 || strcmp(buffer, "fechar jogo") == 0) {
-            jogo_iniciado = 0;
-            votos_recebidos = 0;
-            cliente_dica = -1;
-            pthread_mutex_lock(&votos_mutex);
-            memset(votos, 0, sizeof(votos));
-            pthread_mutex_unlock(&votos_mutex);
+            if(jogo_iniciado == 1){
+                jogo_iniciado = 0;
+                votos_recebidos = 0;
+                cliente_dica = -1;
+                pthread_mutex_lock(&votos_mutex);
+                memset(votos, 0, sizeof(votos));
+                pthread_mutex_unlock(&votos_mutex);
 
-            char fim_msg[BUFFER_SIZE];
-            snprintf(fim_msg, sizeof(fim_msg), "Servidor: Jogo encerrado!\n");
-            broadcast_message(fim_msg, -1);  // Envia mensagem de inicio do jogo aos clientes
+                char fim_msg[BUFFER_SIZE];
+                snprintf(fim_msg, sizeof(fim_msg), "Servidor: Jogo encerrado!\n");
+                broadcast_message(fim_msg, -1);  // Envia mensagem de inicio do jogo aos clientes
+            } else{
+                char nfim_msg[BUFFER_SIZE];
+                snprintf(nfim_msg, sizeof(nfim_msg), "Servidor: O jogo ainda não foi iniciado!\n");
+                broadcast_message(nfim_msg, -1);  // Envia mensagem de inicio do jogo aos clientes
+            }
         }
 
         // Verifica se o cliente enviou o comando "iniciar jogo"
