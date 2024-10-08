@@ -5,7 +5,9 @@
 
 ## Sobre
 
-Trabalho 1 da Disciplina SSC0641 - Redes de Computadores. Este trabalho visa aplicar conhecimentos e técnicas de threads, região crítica, semáforos, variáveis de condição e gerenciamento de recursos, simulando uma fábrica de canetas com seus diversos pontos de operação. 
+Trabalho 1 da Disciplina SSC0641 - Redes de Computadores. Este trabalho visa aplicar conhecimentos e técnicas de redes de computadores, sockets, comunicação TCP/UDP, servidor e clientes e threads, desenvolvendo uma aplicação multicliente por rede.
+
+Dessa forma optou-se por desenvolver um jogo multiplayer inspirado no jogo wavelenght. Conheça mais sobre o jogo original em: https://boardgamegeek.com/boardgame/262543/wavelength
 
 ## Como rodar
 
@@ -15,23 +17,24 @@ Trabalho 1 da Disciplina SSC0641 - Redes de Computadores. Este trabalho visa apl
     $ cd redest1
 
 ```
-## Para usar o modo chat
-
-```bash
-    # Linux [Ubuntu 22.04.5 LTS] - Compilar e Rodar Servidor
-    $ make compile_servidor
-    $ make run_servidor_chat
-    # Linux [Ubuntu 22.04.5 LTS] - Compilar e Rodar Cliente
-    $ make compile_cliente
-    $ make run_cliente
-
-```
 ## Para usar o modo jogo
 
 ```bash
     # Linux [Ubuntu 22.04.5 LTS] - Compilar e Rodar Servidor
     $ make compile_servidor
     $ make run_servidor_jogo
+    # Linux [Ubuntu 22.04.5 LTS] - Compilar e Rodar Cliente
+    $ make compile_cliente
+    $ make run_cliente
+
+```
+
+## Para usar o modo chat
+
+```bash
+    # Linux [Ubuntu 22.04.5 LTS] - Compilar e Rodar Servidor
+    $ make compile_servidor
+    $ make run_servidor_chat
     # Linux [Ubuntu 22.04.5 LTS] - Compilar e Rodar Cliente
     $ make compile_cliente
     $ make run_cliente
