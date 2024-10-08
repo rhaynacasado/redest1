@@ -61,6 +61,15 @@ void *handle_client(void *arg) {
     char join_message[BUFFER_SIZE];
     snprintf(join_message, sizeof(join_message), "Servidor: %s entrou no chat.\n", client_name);
     broadcast_message(join_message, -1);
+    char welcome_msg[BUFFER_SIZE];
+    snprintf(welcome_msg, sizeof(welcome_msg), "Bem-vindo ao servidor do Wavelenght %s! Aqui estão algumas instruções básicas sobre o funcionamento do jogo.\n\nWavelength é um jogo em que um jogador dá uma dica para que sua equipe adivinhe a posição de um alvo em uma escala\nabstrata (como 'quente' a 'frio'). A equipe discute e tenta posicionar um ponteiro o mais próximo possível do alvo\ncom base na dica, tentando alinhar seus pensamentos.", client_name);
+    send(client_sock, welcome_msg, strlen(welcome_msg), 0);  // Envia mensagem de boas-vindas ao cliente
+    char rules_msg[BUFFER_SIZE];
+    snprintf(rules_msg, sizeof(rules_msg), "Durante cada rodada do jogo, um jogador (mestre) será escolhido\npara fornecer a dica para os demais.\n\nAssim, todos receberão uma escala abstrata e o mestre receberá também uma nota de 0 a 10 dentro dessa escala.\nO mestre, então, fornecerá uma dica sobre esta nota e o objetivo dos jogadores é adivinhar qual a nota da rodada!\n\nVocês podem conversar aqui pelo chat para discutirem suas respostas, mas todos os jogadores precisam forncer um\nnúmero de 0 a 10 como resposta da rodada. A resposta final será computada como a média de todas as respostas.\nAqui vão alguns comandos importantes.\n\n");
+    send(client_sock, rules_msg, strlen(rules_msg), 0);  // Envia mensagem de regras ao cliente
+    char command_msg[BUFFER_SIZE];
+    snprintf(command_msg, sizeof(command_msg), "'iniciar rodada' -> iniciar uma rodada\n'resposta - X' -> fornece uma resposta\n'fim' -> sai do servidor\n\nBom Jogo!\n");
+    send(client_sock, command_msg, strlen(command_msg), 0);  // Envia mensagem de comando ao cliente
 
     while (1) {
         // Ler dados do cliente até encontrar um '\n' (delimitador de mensagem)
@@ -89,12 +98,25 @@ void *handle_client(void *arg) {
             goto disconnect;
         }
 
+        // if (strcmp(buffer, "fechar jogo\n") == 0 || strcmp(buffer, "fechar jogo") == 0) {
+        //     jogo_iniciado = 0;
+        //     cliente_dica
+        //     char inicio_msg[BUFFER_SIZE];
+        //     snprintf(inicio_msg, sizeof(inicio_msg), "Jogo iniciado!\n");
+        //     broadcast_message(inicio_msg, -1);  // Envia mensagem de inicio do jogo aos clientes
+        // }
+
         // Verifica se o cliente enviou o comando "iniciar jogo"
+        int nota, resposta;
+        pthread_mutex_lock(&dica_mutex);
         pthread_mutex_lock(&jogo_mutex);
-        if (strcmp(buffer, "iniciar rodada\n") == 0 || strcmp(buffer, "iniciar rodada") == 0) {
+        if (strcmp(buffer, "iniciar jogo\n") == 0 || strcmp(buffer, "iniciar jogo") == 0) {
             if (num_clientes >= 2 && jogo_iniciado == 0) {
                 jogo_iniciado = 1; // Marca que o jogo foi iniciado
-                escolher_cliente_dica();  // Escolhe o cliente para dar a dica
+                char inicio_msg[BUFFER_SIZE];
+                snprintf(inicio_msg, sizeof(inicio_msg), "Jogo iniciado!\n");
+                broadcast_message(inicio_msg, -1);  // Envia mensagem de inicio do jogo aos clientes
+                nota = escolher_cliente_dica();  // Escolhe o cliente para dar a dica
             } else if (jogo_iniciado == 0){
                 // Caso não tenha clientes suficientes
                 char erro_msg[BUFFER_SIZE];
@@ -106,23 +128,17 @@ void *handle_client(void *arg) {
                 snprintf(erro_msg, sizeof(erro_msg), "O jogo já está em andamento.\n");
                 send(client_sock, erro_msg, strlen(erro_msg), 0);  // Envia mensagem de erro ao cliente
             }
-        }
-        pthread_mutex_unlock(&jogo_mutex);
-
-        int resposta;
-        pthread_mutex_lock(&dica_mutex);
-        // Se for o cliente da dica, compartilhe a dica
-        if (client_sock == clientes[cliente_dica].sock && dica_enviada == 0) {
+        } else if (client_sock == clientes[cliente_dica].sock && dica_enviada == 0) { // Se for o cliente da dica, compartilhe a dica
             char dica_msg[BUFFER_SIZE];
             snprintf(dica_msg, sizeof(dica_msg), "Servidor: %s deu uma dica: %s", client_name, buffer);
-            // pthread_mutex_unlock(&clientes_mutex);
             broadcast_message(dica_msg, -1);
             dica_enviada = 1; 
         } else if (client_sock != clientes[cliente_dica].sock && dica_enviada == 1){
             resposta = validar_resposta(client_sock, buffer);
             if(resposta >= 0)
-                coletar_votos(client_sock, resposta, RESPOSTA); // Outros clientes votam
+                coletar_votos(client_sock, resposta, nota); // Outros clientes votam
         }
+        pthread_mutex_unlock(&jogo_mutex);
 
         if(dica_enviada != 1 || resposta != -2){
             // Exibe a mensagem recebida na janela de saída com cor
@@ -136,9 +152,9 @@ void *handle_client(void *arg) {
             // Prepara a mensagem para transmitir aos outros clientes
             char message_to_send[BUFFER_SIZE + 100]; // Ajuste do tamanho do buffer
             snprintf(message_to_send, sizeof(message_to_send), "%s: %s", client_name, buffer);
-
-            // Transmite a mensagem para os outros clientes
-            broadcast_message(message_to_send, client_sock);
+            
+            if(client_sock != clientes[cliente_dica].sock || dica_enviada == 0)
+                broadcast_message(message_to_send, client_sock); // Transmite a mensagem para os outros clientes
         }
         pthread_mutex_unlock(&dica_mutex);
     }

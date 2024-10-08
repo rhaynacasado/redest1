@@ -18,24 +18,143 @@ pthread_cond_t cond_votos = PTHREAD_COND_INITIALIZER;   // Mutex para coordenar 
 pthread_mutex_t jogo_mutex = PTHREAD_MUTEX_INITIALIZER;    // Mutex para inicio do jogo
 pthread_mutex_t dica_mutex = PTHREAD_MUTEX_INITIALIZER;   // Mutex para envio de dica
 
+void rand_escala(){
+    const char* escalas[100][2] = {
+        {"Quente", "Frio"},
+        {"Velho", "Novo"},
+        {"Rápido", "Devagar"},
+        {"Claro", "Escuro"},
+        {"Grande", "Pequeno"},
+        {"Famoso", "Desconhecido"},
+        {"Barato", "Caro"},
+        {"Saboroso", "Insosso"},
+        {"Alto", "Baixo"},
+        {"Difícil", "Fácil"},
+        {"Inteligente", "Tolo"},
+        {"Perigoso", "Seguro"},
+        {"Doce", "Salgado"},
+        {"Limpo", "Sujo"},
+        {"Pesado", "Leve"},
+        {"Comum", "Raro"},
+        {"Importante", "Irrelevante"},
+        {"Sério", "Engraçado"},
+        {"Natural", "Artificial"},
+        {"Forte", "Fraco"},
+        {"Antigo", "Moderno"},
+        {"Luxuoso", "Simples"},
+        {"Confuso", "Claro"},
+        {"Barulhento", "Silencioso"},
+        {"Agradável", "Desagradável"},
+        {"Frágil", "Resistente"},
+        {"Curto", "Longo"},
+        {"Alto (som)", "Baixo (som)"},
+        {"Cedo", "Tarde"},
+        {"Simples", "Complexo"},
+        {"Colorido", "Monocromático"},
+        {"Cheio", "Vazio"},
+        {"Rico", "Pobre"},
+        {"Normal", "Estranho"},
+        {"Animado", "Tedioso"},
+        {"Pessimista", "Otimista"},
+        {"Lento", "Rápido"},
+        {"Solitário", "Social"},
+        {"Frio (personalidade)", "Acolhedor"},
+        {"Motivado", "Desmotivado"},
+        {"Jovem", "Idoso"},
+        {"Culto", "Ignorante"},
+        {"Energético", "Exausto"},
+        {"Sensível", "Insensível"},
+        {"Carinhoso", "Distante"},
+        {"Verdadeiro", "Falso"},
+        {"Orgulhoso", "Humilde"},
+        {"Aventureiro", "Conservador"},
+        {"Moderno", "Clássico"},
+        {"Extrovertido", "Introvertido"},
+        {"Inteligível", "Incompreensível"},
+        {"Relaxante", "Estressante"},
+        {"Educado", "Rude"},
+        {"Bem-sucedido", "Fracassado"},
+        {"Adaptável", "Rígido"},
+        {"Chamativo", "Discreto"},
+        {"Popular", "Niche"},
+        {"Sincero", "Fingido"},
+        {"Estável", "Instável"},
+        {"Convincente", "Dúbio"},
+        {"Sensato", "Impulsivo"},
+        {"Justo", "Injusto"},
+        {"Familiar", "Estranho"},
+        {"Fértil", "Árido"},
+        {"Generoso", "Egoísta"},
+        {"Criativo", "Literal"},
+        {"Saudável", "Doente"},
+        {"Verdade", "Mentira"},
+        {"Simpático", "Irritante"},
+        {"Divertido", "Enfadado"},
+        {"Flexível", "Inflexível"},
+        {"Inteligente", "Burrice"},
+        {"Normal", "Bizarro"},
+        {"Público", "Privado"},
+        {"Aberto", "Fechado"},
+        {"Curioso", "Indiferente"},
+        {"Honesto", "Desonesto"},
+        {"Confiante", "Inseguro"},
+        {"Importante", "Insignificante"},
+        {"Livre", "Restrito"},
+        {"Inspirador", "Desmotivador"},
+        {"Elegante", "Desleixado"},
+        {"Saudável", "Não saudável"},
+        {"Quente (personalidade)", "Frio"},
+        {"Teimoso", "Flexível"},
+        {"Convencional", "Inconvencional"},
+        {"Organizado", "Desorganizado"},
+        {"Tímido", "Desinibido"},
+        {"Moderado", "Extremista"},
+        {"Pesado (assunto)", "Leve"},
+        {"Amoroso", "Indiferente"},
+        {"Direto", "Sutil"},
+        {"Criativo", "Racional"},
+        {"Inovador", "Tradicional"},
+        {"Compreensivo", "Julgador"},
+        {"Realista", "Sonhador"},
+        {"Rebelde", "Obediente"},
+        {"Sério", "Brincalhão"},
+        {"Ousado", "Cauteloso"},
+        {"Pragmático", "Idealista"}
+    };
+
+    int i = rand() % 100;
+
+    char escala_msg[BUFFER_SIZE];
+    snprintf(escala_msg, sizeof(escala_msg), "Servidor: A escala da rodada é %s (0) - %s (10)!\n", escalas[i][0], escalas[i][1]);
+    broadcast_message(escala_msg, -1);
+}
+
 // Função para escolher um cliente aleatório para dar a dica
-void escolher_cliente_dica() {
+int escolher_cliente_dica() {
     srand(time(NULL));
+    rand_escala();
     cliente_dica = rand() % num_clientes;
     char msg[BUFFER_SIZE];
     pthread_mutex_lock(&clientes_mutex);
-    snprintf(msg, sizeof(msg), "Servidor: Jogo iniciado!\nServidor: O cliente %s deve dar uma dica!\n", clientes[cliente_dica].nome);
+    snprintf(msg, sizeof(msg), "Servidor: O jogador %s deve dar uma dica!\n", clientes[cliente_dica].nome);
     pthread_mutex_unlock(&clientes_mutex);
     broadcast_message(msg, -1); // Notifica todos
 
     pthread_mutex_lock(&votos_mutex);
     memset(votos, 0, sizeof(votos)); // Limpa vetor de votos
     pthread_mutex_unlock(&votos_mutex);
+
+    int nota = rand()%11;
+    char nota_msg[BUFFER_SIZE];
+    snprintf(nota_msg, sizeof(nota_msg), "Servidor: %s a nota da rodada é %d. Dê uma dica correspondente!\n", clientes[cliente_dica].nome, nota);
+    send(clientes[cliente_dica].sock, nota_msg, strlen(nota_msg), 0);
+
+    return(nota);
 }
 
 // Função para validar as respostas no formato "Resposta: X"
 int validar_resposta(int client_sock, const char *msg) {
-    char prefixo[] = "Resposta: ";
+    char prefixo[] = "resposta - ";
     int numero;
 
     // Verifica se a mensagem começa com "Resposta: "
@@ -76,9 +195,9 @@ void coletar_votos(int client_sock, int voto, int resposta) {
 
         char msg_final[BUFFER_SIZE];
         if(resultado_final == resposta)
-            snprintf(msg_final, sizeof(msg_final), "R: %d. Vocês acertaram! A resposta era %d.\n", resultado_final, resposta);
+            snprintf(msg_final, sizeof(msg_final), "Vocês acertaram! A resposta era %d.\n", resultado_final);
         else
-            snprintf(msg_final, sizeof(msg_final), "R: %d. Não foi dessa vez! A resposta era %d.\n", resultado_final, resposta);
+            snprintf(msg_final, sizeof(msg_final), "Não foi dessa vez! Vocês marcaram %d, mas era %d.\n", resultado_final, resposta);
         broadcast_message(msg_final, -1);
         
         // Resetar para nova rodada
@@ -91,4 +210,3 @@ void coletar_votos(int client_sock, int voto, int resposta) {
         // escolher_cliente_dica(); // Inicia nova rodada
     }
 }
-
