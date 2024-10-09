@@ -7,9 +7,7 @@
 
 Trabalho 1 da Disciplina SSC0641 - Redes de Computadores. Este trabalho visa aplicar conhecimentos e técnicas de redes de computadores, sockets, comunicação TCP/UDP, servidor e clientes e threads, desenvolvendo uma aplicação multicliente por rede.
 
-Dessa forma optou-se por desenvolver um jogo multiplayer inspirado no jogo Wavelength. Conheça mais sobre o jogo original em: https://boardgamegeek.com/boardgame/262543/wavelength. O projeto está disponível em duas versões:
-  1) Modo Jogo: Versão final do jogo Wavelength;
-  2) Modo Chat: Versão base de chat multicliente.
+Dessa forma optou-se por desenvolver um jogo multiplayer inspirado no jogo Wavelength. Conheça mais sobre o jogo original em: https://boardgamegeek.com/boardgame/262543/wavelength. 
 
 ## Como rodar
 
@@ -21,10 +19,6 @@ Dessa forma optou-se por desenvolver um jogo multiplayer inspirado no jogo Wavel
     $ git clone https://github.com/rhaynacasado/redest1
     $ cd redest1
 
-```
-## Para usar o Modo Jogo
-
-```bash
     # Linux [Ubuntu 22.04.5 LTS] - Compilar e Rodar Servidor
     $ make compile_servidor
     $ make run_servidor_jogo
@@ -34,22 +28,9 @@ Dessa forma optou-se por desenvolver um jogo multiplayer inspirado no jogo Wavel
     $ make run_cliente
 
 ```
+<!-- ## Vídeo de apresentação
 
-## Para usar o Modo Chat
-
-```bash
-    # Linux [Ubuntu 22.04.5 LTS] - Compilar e Rodar Servidor
-    $ make compile_servidor
-    $ make run_servidor_chat
-
-    # Linux [Ubuntu 22.04.5 LTS] - Compilar e Rodar Cliente
-    $ make compile_cliente
-    $ make run_cliente
-
-```
-## Vídeo de apresentação
-
-Um vídeo explicando o desenvolvimento do projeto está disponível em: 
+Um vídeo explicando o desenvolvimento do projeto está disponível em:  -->
 
 ## Autores
 
