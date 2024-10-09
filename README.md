@@ -28,9 +28,9 @@ Dessa forma optou-se por desenvolver um jogo multiplayer inspirado no jogo Wavel
     $ make run_cliente
 
 ```
-<!-- ## Vídeo de apresentação
+## Vídeo de apresentação
 
-Um vídeo explicando o desenvolvimento do projeto está disponível em:  -->
+Um vídeo explicando o desenvolvimento do projeto está disponível em: https://drive.google.com/file/d/1wkR-GlCKxFj_UHiI7KWuueztBqS1EKAS/view?usp=sharing
 
 ## Autores
 
