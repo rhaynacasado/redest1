@@ -1,10 +1,11 @@
 #include "cliente.h"
 
+// Usando variávies globais das bibliotecas relacionadas
 extern WINDOW *win_output, *win_input;
 extern pthread_mutex_t win_input_mutex, win_output_mutex;
 
 // Variáveis globais
-int sock = 0;  // Socket compartilhado entre as threads
+int sock = 0;                       // Socket compartilhado entre as threads
 int flag_finalizacao_cliente = 1;   // Flag para indicar que o programa deve ser encerrado
 NameColor name_colors[100];
 int name_colors_count = 0;
@@ -196,6 +197,7 @@ void* receber_mensagens(void* arg) {
     pthread_exit(0); // Encerra a thread
 }
 
+// Função de configuração do socket do cliente
 int config_cliente(){
     struct sockaddr_in serv_addr; // Estrutura de endereço do servidor
 
@@ -210,7 +212,7 @@ int config_cliente(){
     serv_addr.sin_port = htons(8080); // Porta 8080 (convertida para ordem de bytes de rede)
 
     // Converter o endereço IP para binário
-    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
+    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) { // IP de localhost
         printf("\nEndereço inválido ou não suportado\n");
         return -1;
     }
@@ -223,6 +225,7 @@ int config_cliente(){
     return 0;
 }
 
+// Função de coguração do terminal do cliente
 void config_terminal_cliente(){
     // Inicializar o ncurses
     initscr(); // Inicializa a tela padrão

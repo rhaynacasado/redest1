@@ -1,11 +1,12 @@
 #include "servidor.h"
 
+// Usando variávies globais das bibliotecas relacionadas
 extern WINDOW *win_output, *win_input;
 extern pthread_mutex_t win_input_mutex, win_output_mutex;
 
 int flag_finalizacao_servidor = 0;     // Flag para indicar que o servidor deve ser encerrado
-Cliente clientes[MAX_CLIENTES];          // Array de clientes conectados
-int num_clientes = 0;                    // Número atual de clientes conectados
+Cliente clientes[MAX_CLIENTES];        // Array de clientes conectados
+int num_clientes = 0;                  // Número atual de clientes conectados
 
 // Mutexes para sincronização
 pthread_mutex_t clientes_mutex = PTHREAD_MUTEX_INITIALIZER; // Mutex para o array de clientes
@@ -16,7 +17,7 @@ void broadcast_message(const char *message, int sender_sock) {
     pthread_mutex_lock(&clientes_mutex);
     for (int i = 0; i < num_clientes; ++i) {
         if (clientes[i].sock != sender_sock) { // Não envia para o remetente
-            if (send(clientes[i].sock, message, strlen(message), 0) < 0) {
+            if (send(clientes[i].sock, message, strlen(message), 0) < 0) {  // Envia mensagem para demais clientes
                 perror("Erro ao enviar mensagem");
             }
         }
@@ -96,6 +97,7 @@ void *enviar_mensagens_servidor(void *arg) {
     pthread_exit(NULL);
 }
 
+// Função de configuração do socket do servidor
 int config_servidor(){
     int server_fd;
     struct sockaddr_in server_addr;
@@ -114,9 +116,9 @@ int config_servidor(){
     }
 
     // Definir endereço e porta
-    server_addr.sin_family = AF_INET; // IPv4
+    server_addr.sin_family = AF_INET;         // IPv4
     server_addr.sin_addr.s_addr = INADDR_ANY; // Qualquer endereço
-    server_addr.sin_port = htons(8080); // Porta 8080
+    server_addr.sin_port = htons(8080);       // Porta 8080
 
     // Vincular o socket ao endereço e porta
     if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
@@ -133,6 +135,7 @@ int config_servidor(){
     return server_fd;
 }
 
+// Função de coguração do terminal do servidor
 void config_terminal_servidor(){
     // Inicializar o ncurses
     initscr();

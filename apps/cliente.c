@@ -1,14 +1,15 @@
 #include "cliente.h"
 
+// Usando variávies globais das bibliotecas relacionadas
 extern WINDOW *win_output, *win_input;
 extern pthread_mutex_t win_input_mutex, win_output_mutex;
 extern int sock, flag_finalizacao_cliente, name_colors_count;
 extern NameColor name_colors[100];
 
 int main() {
-    if(config_cliente() != 0)
-        return -1;
-    config_terminal_cliente();
+    if(config_cliente() != 0)   // Configura o socket do cliente
+        return -1;              // Encerra o o código se falhar
+    config_terminal_cliente();  // Configura o terminal (nucurses)
     
     // Solicitar o nome do usuário
     char nome[50];

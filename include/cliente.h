@@ -11,10 +11,10 @@ typedef struct {
     int color_pair;
 } NameColor;
 
-int get_color_for_name(const char *name); // Função para obter ou atribuir uma cor a um nome
-void* enviar_mensagens_cliente(void* arg); // Função para enviar mensagens ao servidor
-void* receber_mensagens(void* arg); // Função para receber mensagens do servidor
-int config_cliente();
-void config_terminal_cliente();
+int get_color_for_name(const char *name);   // Função para obter ou atribuir uma cor a um nome
+void* enviar_mensagens_cliente(void* arg);  // Função para enviar mensagens ao servidor
+void* receber_mensagens(void* arg);         // Função para receber mensagens do servidor
+int config_cliente();                       // Função de configuração do socket do cliente
+void config_terminal_cliente();             // Função de coguração do terminal do cliente
 
 #endif

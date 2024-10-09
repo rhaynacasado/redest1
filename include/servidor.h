@@ -12,9 +12,9 @@ typedef struct {
     char nome[50];            // Nome do cliente
 } Cliente;
 
-void broadcast_message(const char *message, int sender_sock);
-void *enviar_mensagens_servidor(void *arg); // Função para enviar mensagens do servidor para todos os clientes
-int config_servidor();
-void config_terminal_servidor();
+void broadcast_message(const char *message, int sender_sock);   // Função para transmitir mensagens a todos os clientes
+void *enviar_mensagens_servidor(void *arg);  // Função para enviar mensagens do servidor para todos os clientes
+int config_servidor();                       // Função de configuração do socket do servidor
+void config_terminal_servidor();             // Função de coguração do terminal do servidor
 
 #endif

@@ -1,6 +1,7 @@
 #include "wavelength.h"
 #include <time.h>
 
+// Usando variávies globais das bibliotecas relacionadas
 extern WINDOW *win_output, *win_input;
 extern pthread_mutex_t win_input_mutex, win_output_mutex;
 extern int flag_finalizacao_servidor, num_clientes;
@@ -61,6 +62,8 @@ void *handle_client(void *arg) {
     char join_message[BUFFER_SIZE];
     snprintf(join_message, sizeof(join_message), "Servidor: %s entrou no chat.\n", client_name);
     broadcast_message(join_message, -1);
+
+    // Envia instruções iniciais ao novo cliente
     char welcome_msg[BUFFER_SIZE];
     snprintf(welcome_msg, sizeof(welcome_msg), "Bem-vindo ao servidor do Wavelength %s! Aqui estão algumas instruções básicas sobre o funcionamento do jogo.\n\nWavelength é um jogo em que um jogador dá uma dica para que sua equipe adivinhe a posição de um alvo em uma escala\nabstrata (como 'quente' a 'frio'). A equipe discute e tenta posicionar um ponteiro o mais próximo possível do alvo\ncom base na dica, tentando alinhar seus pensamentos.", client_name);
     send(client_sock, welcome_msg, strlen(welcome_msg), 0);  // Envia mensagem de boas-vindas ao cliente
@@ -98,8 +101,10 @@ void *handle_client(void *arg) {
             goto disconnect;
         }
 
+        // Verifica se o cliente enviou "fechar jogo" para encerrar o jogo
         if (strcmp(buffer, "fechar jogo\n") == 0 || strcmp(buffer, "fechar jogo") == 0) {
-            if(jogo_iniciado == 1){
+            if(jogo_iniciado == 1){     // Se o jogo estiver em andamento ele é finalizado (o servidor se mantém como chat)
+                // Resetar parâmetros de jogo
                 jogo_iniciado = 0;
                 votos_recebidos = 0;
                 cliente_dica = -1;
@@ -108,51 +113,57 @@ void *handle_client(void *arg) {
                 memset(votos, 0, sizeof(votos));
                 pthread_mutex_unlock(&votos_mutex);
 
+                // Avisa aos jogadores que o jogo se encerrou
                 char fim_msg[BUFFER_SIZE];
                 snprintf(fim_msg, sizeof(fim_msg), "Servidor: Jogo encerrado!\n");
                 broadcast_message(fim_msg, -1);  // Envia mensagem de inicio do jogo aos clientes
             } else{
+                // Se o jogo não estiver em andamento avisa que ainda não foi iniciado
                 char nfim_msg[BUFFER_SIZE];
                 snprintf(nfim_msg, sizeof(nfim_msg), "Servidor: O jogo ainda não foi iniciado!\n");
                 broadcast_message(nfim_msg, -1);  // Envia mensagem de inicio do jogo aos clientes
             }
         }
 
-        // Verifica se o cliente enviou o comando "iniciar jogo"
-        int resposta;
+        int voto;
         pthread_mutex_lock(&dica_mutex);
         pthread_mutex_lock(&jogo_mutex);
+        // Verifica se o cliente enviou o comando "iniciar jogo" para iniciar o jogo
         if (strcmp(buffer, "iniciar jogo\n") == 0 || strcmp(buffer, "iniciar jogo") == 0) {
-            if (num_clientes >= 2 && jogo_iniciado == 0) {
+            if (num_clientes >= 2 && jogo_iniciado == 0) {      // Verifica se o jogo ão está em andamento e tem jogadores suficientes
                 jogo_iniciado = 1; // Marca que o jogo foi iniciado
+
+                // Envia mensagem de inicio do jogo aos clientes
                 char inicio_msg[BUFFER_SIZE];
                 snprintf(inicio_msg, sizeof(inicio_msg), "Servidor: Jogo iniciado!\n");
-                broadcast_message(inicio_msg, -1);  // Envia mensagem de inicio do jogo aos clientes
-                nota = escolher_cliente_dica();  // Escolhe o cliente para dar a dica
+                broadcast_message(inicio_msg, -1); 
+
+                nota = escolher_cliente_dica();  // Escolhe o cliente para dar a dica e estabelece parametros da rodada
             } else if (jogo_iniciado == 0){
-                // Caso não tenha clientes suficientes
+                // Caso não tenha clientes suficientes, avisa ao jogaador que solicitou inicio do jogo
                 char erro_msg[BUFFER_SIZE];
                 snprintf(erro_msg, sizeof(erro_msg), "Servidor: Não é possível iniciar o jogo. Necessário pelo menos 2 jogadores.\n");
                 send(client_sock, erro_msg, strlen(erro_msg), 0);  // Envia mensagem de erro ao cliente
             } else {
-                // Caso o jogo já tenha começado
+                // Caso o jogo já tenha começado, avisao ao jogador que solicitou o inicio do jogo
                 char erro_msg[BUFFER_SIZE];
                 snprintf(erro_msg, sizeof(erro_msg), "Servidor: O jogo já está em andamento.\n");
                 send(client_sock, erro_msg, strlen(erro_msg), 0);  // Envia mensagem de erro ao cliente
             }
-        } else if (client_sock == clientes[cliente_dica].sock && dica_enviada == 0) { // Se for o cliente da dica, compartilhe a dica
+        } else if (client_sock == clientes[cliente_dica].sock && dica_enviada == 0) { // Se for o cliente da dica e não tiver enviado-a ainda, compartilhe a dica
             char dica_msg[BUFFER_SIZE];
             snprintf(dica_msg, sizeof(dica_msg), "Servidor: %s deu uma dica: %s", client_name, buffer);
             broadcast_message(dica_msg, -1);
-            dica_enviada = 1; 
-        } else if (client_sock != clientes[cliente_dica].sock && dica_enviada == 1){
-            resposta = validar_resposta(client_sock, buffer);
-            if(resposta >= 0)
-                coletar_votos(client_sock, resposta, nota); // Outros clientes votam
+            dica_enviada = 1; // Indica envio da dica
+        } else if (client_sock != clientes[cliente_dica].sock && dica_enviada == 1){ // Se a dica já tiver sido enviada considera mensgaens dos demais jogadores como possíveis votos
+            voto = validar_voto(client_sock, buffer);   // Verifica se a mensagem é um voto
+            if(voto >= 0)
+                coletar_votos(client_sock, voto, nota); // Adiciona voto à lista de votos
         }
         pthread_mutex_unlock(&jogo_mutex);
-
-        if(dica_enviada != 1 || resposta != -2){
+        
+        // Transmite a mensagem do cliente para os demais clientes, exceto quando for um voto inválido ou quando é jogador mestre
+        if(dica_enviada != 1 || voto != -2){
             // Exibe a mensagem recebida na janela de saída com cor
             pthread_mutex_lock(&win_output_mutex);
             wattron(win_output, COLOR_PAIR(1)); // Ativa o par de cores 1 (Cliente)
@@ -259,8 +270,8 @@ void *accept_clients(void *arg) {
 }
 
 int main() {
-    int server_fd = config_servidor();
-    config_terminal_servidor();
+    int server_fd = config_servidor();  // Configura o socket do cliente
+    config_terminal_servidor();         // Configura o terminal (nucurses)
 
     // Exibir mensagem inicial
     pthread_mutex_lock(&win_output_mutex);

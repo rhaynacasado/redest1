@@ -1,5 +1,6 @@
 #include "servidor.h"
 
+// Usando variávies globais das bibliotecas relacionadas
 extern WINDOW *win_output, *win_input;
 extern pthread_mutex_t win_input_mutex, win_output_mutex;
 extern int flag_finalizacao_servidor, num_clientes;
@@ -190,62 +191,8 @@ void *accept_clients(void *arg) {
 }
 
 int main() {
-    int server_fd;
-    struct sockaddr_in server_addr;
-
-    // Criar o socket do servidor
-    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-        perror("Erro na criação do socket");
-        exit(EXIT_FAILURE);
-    }
-
-    // Configurar o socket para reutilizar o endereço e porta
-    int opt = 1;
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
-        perror("Erro no setsockopt");
-        exit(EXIT_FAILURE);
-    }
-
-    // Definir endereço e porta
-    server_addr.sin_family = AF_INET; // IPv4
-    server_addr.sin_addr.s_addr = INADDR_ANY; // Qualquer endereço
-    server_addr.sin_port = htons(8080); // Porta 8080
-
-    // Vincular o socket ao endereço e porta
-    if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-        perror("Erro no bind");
-        exit(EXIT_FAILURE);
-    }
-
-    // Escutar por conexões
-    if (listen(server_fd, MAX_CLIENTES) < 0) {
-        perror("Erro no listen");
-        exit(EXIT_FAILURE);
-    }
-
-    // Inicializar o ncurses
-    initscr();
-    cbreak();
-    keypad(stdscr, TRUE);
-
-    // Verificar se o terminal suporta cores
-    if (!has_colors()) {
-        endwin();
-        printf("Seu terminal não suporta cores.\n");
-        exit(1);
-    }
-    start_color();
-
-    // Definir pares de cores
-    init_pair(1, COLOR_GREEN, COLOR_BLACK); // Cliente
-    init_pair(2, COLOR_BLUE, COLOR_BLACK);  // Servidor
-
-    // Criar janelas
-    int height_output = LINES - 3;
-    int width = COLS;
-    win_output = newwin(height_output, width, 0, 0);
-    win_input = newwin(3, width, height_output, 0);
-    scrollok(win_output, TRUE);
+    int server_fd = config_servidor();  // Configura o socket do cliente
+    config_terminal_servidor();         // Configura o terminal (nucurses)
 
     // Exibir mensagem inicial
     pthread_mutex_lock(&win_output_mutex);
